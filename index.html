@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CrossAccent-TTS Demo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+
+<div class="text-bg-info p-3 mt-4 col-md-12">
+  <h1 style="text-align:center;">CrossAccent-TTS: Cross-Lingual Accent-Intensity Controllable Text-to-Speech via Disentangled Speaker and Accent Representations</h1>
+</div>
+
+<div class="container-fluid mt-4">
+
+  <div class="mt-4 col-md-12" style="text-align:center;">
+    <h2>Model Architecture</h2>
+    <figure>
+      <img style="display:block; margin-left:auto; margin-right:auto; width:70%;" src="./architecture.png" alt="CrossAccent-TTS Architecture">
+      <figcaption>Figure 1. Block diagram of the proposed CrossAccent-TTS.</figcaption>
+    </figure>
+  </div>
+
+  <div id="sections-container" class="mt-4"></div>
+
+</div>
+
+<footer class="bg-secondary text-light mt-4 pt-3 pb-2">
+  <div class="container"><p class="text-center"></p></div>
+</footer>
+
+<script>
+const MANIFEST = [
+  { name: "Accent Conversion and Comparison to Baselines (Indian Accents)", cols: ["Reference Audio", "Cross Accent TTS (Hindi Accent)", "Cross Accent TTS (Tamil Accent)", "Cross Accent TTS (English Accent)", "Cross Accent TTS (Telugu Accent)", "IndicF5", "XTTS_v2"], rowCount: 3 },
+  { name: "Accent Intensity Control (Indian Accents)", cols: ["Reference Audio", "Gen Audio (I=0)", "Gen Audio (I=0.3)", "Gen Audio (I=0.6)", "Gen Audio (I=1)"], rowCount: 5 },
+  { name: "Comparison to Baseline (Foreign Accents)", cols: ["Reference Audio", "CrossAccentTTS", "CVAE-L", "CVAE-NL", "GST"], rowCount: 4 },
+  { name: "Accent Conversion (Foreign Accents)",       cols: ["Reference Audio", "Hindi Accent", "Korean Accent", "Vietnamese Accent"], rowCount: 2,
+    extraCols: ["Input Text"] },
+  { name: "Accent Intensity Control (Foreign Accents)", cols: ["Reference Audio", "Gen Audio (Accent_2_Intensity=0)", "Gen Audio (Accent_2_Intensity=0.3)", "Gen Audio (Accent_2_Intensity=0.6)", "Gen Audio (Accent_2_Intensity=1)"], rowCount: 2,
+    extraCols: ["Accent 1", "Accent 2", "Input Text"] },
+];
+
+// Per-section, per-row placeholder data.
+// Keys must match the extraCols labels defined in MANIFEST above (default: ref_lang, input_lang, input_text).
+const PLACEHOLDERS = {
+ "Accent Conversion and Comparison to Baselines (Indian Accents)": [
+    { ref_lang: "Tamil", input_lang: "Hindi", input_text: "थिएटर में लोग विभिन्न तरीके की मूवी और कार्यक्रमों को देखते हैं जिनसे कि वो मनोरंजन की गतिविधियों का आनंद लेते हैं" },
+    { ref_lang: "Telugu", input_lang: "Hindi", input_text: "हम आपको अपने सपने को साकार करने में मदद करने की कोशिश करेंगे." },
+    { ref_lang: "English", input_lang: "Hindi", input_text: "और वो देखते रहते हैं जिससे उनको दिक्कतें हुई हैं मोबाइल जितना उनका फायदेमंद रहा है लॉकडाउन में उतना उनका नुकसान भी रहा है" },
+  ],
+  "Accent Intensity Control (Indian Accents)": [
+    { ref_lang: "Marathi", input_lang: "Hindi", input_text: "आज तो मेरा दिन ही बन गया! जिस क्लाइंट को मैं महीनों से मनाने की कोशिश कर रहा था, उसने आख़िरकार हाँ कर दी! बहुत बड़ी डील है ये!" },
+    { ref_lang: "Bengali", input_lang: "Hindi", input_text: "मुझे लगता है कोई हमारा पीछा कर रहा है। मैंने दो बार मुड़कर देखा, वो आदमी अभी भी वहीं है। जल्दी चलो-यहाँसे, मुझे घबराहट हो रही है।" },
+    { ref_lang: "Telugu", input_lang: "Marathi", input_text: "व्वा! आज तर आईने माझ्या आवडीची पुरणपोळी केली आहे! किती दिवस झाले होते खाऊन! खरंच, खूप छान वाटलं!" },
+    { ref_lang: "Hindi", input_lang: "Telugu", input_text: "పాపం ఆ కుర్రాడు, పరీక్ష ఫెయిల్ అయ్యానని ఎంత దిగులుగా కూర్చున్నాడో। చూస్తుంటేనే జాలి వేసింది." },
+    { ref_lang: "Hindi", input_lang: "Bengali", input_text: "আমার ছোটবেলার বন্ধুটা কালকে ফোন করেছিল... ওর মা খুব অসুস্থ। শুনে এত খারাপ লাগলো! ওর জন্য খুব চিন্তা হচ্ছে।" },
+  ],
+  "Comparison to Baseline (Foreign Accents)": [
+    { ref_lang: "Vietnamese", input_lang: "Arabic", input_text: "For the twentieth time that evening the two men shook hands." },
+    { ref_lang: "Chinese", input_lang: "Hindi", input_text: "And you always want to see it in the superlative degree. " },
+    { ref_lang: "Chinese", input_lang: "Spanish", input_text: "And you always want to see it in the superlative degree. " },
+    { ref_lang: "Spanish", input_lang: "Spanish", input_text: "I will go over tomorrow afternoon." },
+  ],
+  // extraCols: ["Input Text"] — so only one key needed per row
+  "Accent Conversion (Foreign Accents)": [
+    { "Input Text": "Watching the sunset by the ocean is one of the most peaceful experiences anyone can have after a very busy and productive week." },
+    { "Input Text": "Music has a special way of bringing people together and creating wonderful memories that can last for a very long time in our hearts." },
+  ],
+  // extraCols: ["Accent 1", "Accent 2", "Input Text"] — three keys per row
+  "Accent Intensity Control (Foreign Accents)": [
+    { "Accent 1": "Hindi", "Accent 2": "Chinese", "Input Text": "The weather outside is absolutely beautiful with a clear blue sky and a gentle breeze blowing through the green trees in the park." },
+    { "Accent 1": "Arabic", "Accent 2": "Spanish", "Input Text": "A balanced diet filled with fresh fruits and vegetables is the best way to maintain a healthy lifestyle and keep your body strong." },
+  ],
+};
+
+// Default extra columns for sections that don't specify extraCols
+const DEFAULT_EXTRA_COLS = ["Ref Lang", "Input Lang", "Input Text"];
+const DEFAULT_EXTRA_KEYS = ["ref_lang", "input_lang", "input_text"];
+
+function buildSections() {
+  const container = document.getElementById('sections-container');
+  let html = '';
+
+  MANIFEST.forEach(section => {
+    const rows = PLACEHOLDERS[section.name] || [];
+    const extraCols = section.extraCols || DEFAULT_EXTRA_COLS;
+
+    // Header
+    let headerCols = extraCols.map(c => `<th>${c}</th>`).join('');
+    section.cols.forEach(col => { headerCols += `<th>${col}</th>`; });
+
+    // Body rows
+    let bodyRows = '';
+    for (let r = 1; r <= section.rowCount; r++) {
+      const p = rows[r - 1] || {};
+      bodyRows += '<tr>';
+
+      if (section.extraCols) {
+        // Use the extraCols labels directly as keys
+        section.extraCols.forEach(key => {
+          bodyRows += `<td style="min-width:160px">${p[key] || '—'}</td>`;
+        });
+      } else {
+        // Default: ref_lang, input_lang, input_text
+        bodyRows += `<td>${p.ref_lang || '—'}</td>`;
+        bodyRows += `<td>${p.input_lang || '—'}</td>`;
+        bodyRows += `<td style="min-width:180px">${p.input_text || '—'}</td>`;
+      }
+
+      section.cols.forEach(col => {
+        const src = `./Data/${section.name}/${col}/Media${r}.wav`;
+        bodyRows += `<td><audio controls style="width:150px;height:50px"><source src="${src}" type="audio/wav"></audio></td>`;
+      });
+      bodyRows += '</tr>';
+    }
+
+    html += `
+      <h2 style="text-decoration:underline;" class="mt-4">Demo Samples: ${section.name}</h2>
+      <table class="table">
+        <thead><tr>${headerCols}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>`;
+  });
+
+  container.innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', buildSections);
+</script>
+
+</body>
+</html>
